@@ -3,19 +3,6 @@
 
 // DEFINES
 
-
-// ALU
-`define ALU_ADD 	4'b0000
-`define ALU_SUB 	4'b0001
-`define ALU_AND 	4'b0010
-`define ALU_OR 	4'b0011
-`define ALU_XOR	4'b0100
-`define ALU_SLL 	4'b0101
-`define ALU_SRL 	4'b0110
-`define ALU_SRA 	4'b0111
-`define ALU_SLT 	4'b1000
-`define ALU_SLTU 	4'b1001
-
 // instruction types
 `define TYPE_R 3'b000
 `define TYPE_I 3'b001
@@ -83,10 +70,10 @@
 `define R_AND    3'b111
 
 // type I fence instructions
-`define OPCODE_I_FENCE  7'b0001111
+`define OPCODE_I_FENCE 7'b0001111
 
 // type I csr instructions
-`define OPCODE_I_CSR    7'b1110011
+`define OPCODE_I_CSR 7'b1110011
 `define I_CSRRW  3'b001
 `define I_CSRRS  3'b010
 `define I_CSRRC  3'b011
@@ -106,5 +93,49 @@
 `define CSR_MCAUSE  12'h342
 `define CSR_MEPC    12'h341
 
+
+// ALU operations
+`define ALU_ADD 	4'b0000
+`define ALU_SUB 	4'b0001
+`define ALU_AND 	4'b0010
+`define ALU_OR 	4'b0011
+`define ALU_XOR	4'b0100
+`define ALU_SLL 	4'b0101
+`define ALU_SRL 	4'b0110
+`define ALU_SRA 	4'b0111
+`define ALU_SLT 	4'b1000
+`define ALU_SLTU 	4'b1001
+`define ALU_NONE 	4'b1111
+
+// ALU 2nd operand source
+`define ALU_SRC_RS2	2'b00
+`define ALU_SRC_IMM	2'b01
+`define ALU_SRC_NONE	2'b11
+
+// register file rd source
+`define REG_SRC_NONE	2'b00
+`define REG_SRC_ALU	2'b01
+`define REG_SRC_MEM	2'b10
+`define REG_SRC_PCp4	2'b11
+
+// jump condition
+`define JUMP_NONE	2'b00
+`define JUMP_IF_0	2'b01
+`define JUMP_IF_1	2'b10
+`define JUMP_ALL  2'b11
+
+// (data) memory write enable mask
+`define MEM_WR_NONE	4'b0000
+`define MEM_WR_BYTE	4'b0001
+`define MEM_WR_HALF	4'b0011
+`define MEM_WR_WORD	4'b1111
+
+// (data) memory read type
+`define MEM_RD_NONE	4'b000
+`define MEM_RD_BYTE	4'b001
+`define MEM_RD_HALF	4'b010
+`define MEM_RD_WORD	4'b011
+`define MEM_RD_B_U	4'b101
+`define MEM_RD_H_U	4'b110
 
 `endif  //_defines_
