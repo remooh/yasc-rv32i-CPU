@@ -119,10 +119,12 @@
 `define REG_SRC_PCp4	2'b11
 
 // jump condition
-`define JUMP_NONE	2'b00
-`define JUMP_IF_0	2'b01
-`define JUMP_IF_1	2'b10
-`define JUMP_ALL  2'b11
+`define JUMP_NONE	3'b000
+`define JUMP_IF_0	3'b010
+`define JUMP_IF_1	3'b011
+`define JUMP_JAL  3'b100
+`define JUMP_JALR 3'b101
+`define JUMP_ZERO 3'b000 // used for reset
 
 // (data) memory write enable mask
 `define MEM_WR_NONE	4'b0000

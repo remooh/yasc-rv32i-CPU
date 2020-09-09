@@ -12,7 +12,7 @@ module control_unit
 	output [2:0] alu_src,
 	output [3:0] alu_op,
 	
-	output [1:0] jump_type,
+	output [2:0] jump_type,
 	
 	output [1:0] regfile_src,
 	
@@ -55,8 +55,8 @@ module control_unit
 							`ALU_SRC_NONE;
 
 	// jump condition
-	assign jump_type =	(opcode == `OPCODE_J_JAL) 							? `JUMP_ALL:
-								(opcode == `OPCODE_I_JALR) 						? `JUMP_ALL:
+	assign jump_type =	(opcode == `OPCODE_J_JAL) 							? `JUMP_JAL:
+								(opcode == `OPCODE_I_JALR) 						? `JUMP_JALR:
 								((opcode == `OPCODE_B) && funct3 == 3'b000)  ? `JUMP_IF_0:	// beq
 								((opcode == `OPCODE_B) && funct3 == 3'b001)  ? `JUMP_IF_1:	// bne
 								((opcode == `OPCODE_B) && funct3 == 3'b100)  ? `JUMP_IF_1:	// blt
