@@ -4,7 +4,7 @@ module decode
 (
 	// Input Ports
 	input clk,
-	input [31:0] instruction_data,
+	input [31:0] instruction,
 
 	// Output Ports
 	output [6:0] opcode,
@@ -21,13 +21,13 @@ module decode
 	wire sign;
 
 	// instruction fields assignement
-	assign opcode		= instruction_data[6:0];
-	assign rd_addr		= instruction_data[11:7];
-	assign funct3 		= instruction_data[14:12];
-	assign rs1_addr	= instruction_data[19:15];
-	assign rs2_addr	= instruction_data[24:20];
-	assign funct7 		= instruction_data[31:25];
-	assign sign			= instruction_data[31];
+	assign opcode		= instruction[6:0];
+	assign rd_addr		= instruction[11:7];
+	assign funct3 		= instruction[14:12];
+	assign rs1_addr	= instruction[19:15];
+	assign rs2_addr	= instruction[24:20];
+	assign funct7 		= instruction[31:25];
+	assign sign			= instruction[31];
 
 	// instruction type
 	assign inst_type = 	(opcode == `OPCODE_U_LUI) ? 	`TYPE_U:
