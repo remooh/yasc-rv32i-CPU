@@ -107,16 +107,20 @@
 `define ALU_SLTU 	4'b1001
 `define ALU_NONE 	4'b1111
 
+// ALU 1st operand source
+`define ALU1_SRC_RS1	1'b0
+`define ALU1_SRC_PC	1'b1
+
 // ALU 2nd operand source
-`define ALU_SRC_RS2	2'b00
-`define ALU_SRC_IMM	2'b01
-`define ALU_SRC_NONE	2'b11
+`define ALU2_SRC_RS2	1'b0
+`define ALU2_SRC_IMM	1'b1
 
 // register file rd source
-`define REG_SRC_NONE	2'b00
-`define REG_SRC_ALU	2'b01
-`define REG_SRC_MEM	2'b10
-`define REG_SRC_PCp4	2'b11
+`define REG_SRC_NONE	3'b000
+`define REG_SRC_ALU	3'b001
+`define REG_SRC_MEM	3'b010
+`define REG_SRC_IMM	3'b100
+`define REG_SRC_PCP4	3'b111
 
 // jump condition
 `define JUMP_NONE	3'b000

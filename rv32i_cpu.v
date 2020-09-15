@@ -34,20 +34,23 @@ module rv32i_cpu
 	wire [31:0] immediate;
 
 	// control unit fields
-	wire [2:0] alu_src;
+	wire rs1_to_alu1;
+	wire rs2_to_alu2;
 	wire [3:0] alu_op;
 	wire [2:0] jump_type;
 	wire [1:0] regfile_src;
 	wire [2:0] mem_read_type;
-	wire [3:0] mem_write_mask;
+//	wire [3:0] mem_write_mask;
 	
 	// program counter fields
-	wire update_pc;
+	reg update_pc;
+	wire [31:0] pc_current;
 	wire [31:0] pc_plus_4;
 	wire [31:0] pc_next;
 	
 	// register file fields
 	wire rd_we;
+	wire [4:0] regfile_addr;
 	wire [31:0] rd_data;
 	wire [31:0] rs1_data;
 	wire [31:0] rs2_data;
@@ -79,12 +82,13 @@ module rv32i_cpu
 		.funct3 (funct3),
 		.funct7 (funct7),
 		//outputs
-		.alu_src (alu_src),
+		.rs1_to_alu1 (rs1_to_alu1),
+		.rs2_to_alu2 (rs2_to_alu2),
 		.alu_op (alu_op),
 		.jump_type (jump_type),
 		.regfile_src (regfile_src),
 		.mem_read_type (mem_read_type),
-		.mem_write_mask (mem_write_mask)
+		.mem_write_mask (data_we)
 	);
 	
 	program_counter _pc(
@@ -94,6 +98,7 @@ module rv32i_cpu
 		.jump_type (jump_type),
 		.update_pc (update_pc),
 		//outputs
+		.pc_current (pc_current),
 		.pc_plus_4 (pc_plus_4),
 		.pc_next (pc_next)
 	);
@@ -102,7 +107,7 @@ module rv32i_cpu
 		//inputs
 		.clk (clk),
 		.rd_we (rd_we), 
-		.rd_addr (rd_addr),
+		.rd_addr (regfile_addr),
 		.rs1_addr (rs1_addr),
 		.rs2_addr (rs2_addr),
 		.rd_data (rd_data),
@@ -120,9 +125,32 @@ module rv32i_cpu
 		.result (alu_result)
 	);
 	
+//////////////////// internal wiring ////////////////////
+	
+	// register file
+	assign regfile_addr =	(regfile_src != `REG_SRC_NONE) 	? rd_addr : {5{1'b0}};
 
-	// cpu finite state machine
+	assign rd_data = 	(regfile_src == `REG_SRC_ALU) 	? alu_result:
+				(regfile_src == `REG_SRC_MEM) 	? data_read:
+				(regfile_src == `REG_SRC_IMM) 	? immediate:
+				(regfile_src == `REG_SRC_PCP4) 	? pc_plus_4:
+				{32{1'b0}};
+
+	// alu 1st operand
+	assign alu_a = 	(rs1_to_alu1 == `ALU1_SRC_RS1) ? rs1_data : pc_current;
+
+	// alu 2nd operand
+	assign alu_b = 	(rs2_to_alu2 == `ALU2_SRC_RS2) ? rs2_data : immediate;
+
+
+//////////////////// cpu finite state machine ////////////////////
 	localparam IDLE	= 0;
+	localparam FETCH = 0;
+	localparam DECODE = 0;
+	localparam EXECUTE = 0;
+	localparam MEMORY_ACCESS = 0;
+	localparam MEMORY_ACCESS_WAIT = 0;
+	localparam WRITEBACK = 0;
 	
 	reg [2:0] current_state, next_state;
 	
@@ -132,6 +160,22 @@ module rv32i_cpu
 		case(current_state)
 			IDLE: begin
 			end
+
+			FETCH: begin
+				// PC
+				update_pc = 1'b0;
+				
+				// fetch instruction
+				instruction = instruction_data;
+
+				next_state = DECODE;
+			end
+
+			DECODE: begin
+				
+				next_state = EXECUTE;
+			end
+
 		endcase
 	end
 	
