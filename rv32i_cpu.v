@@ -10,14 +10,15 @@ module rv32i_cpu
 	input reset,
 	
 	// instruction memory
-	output [IMEM_WIDTH-1:0] inst_addr,
+	output reg [IMEM_WIDTH-1:0] inst_addr,
 	input  [31:0] instruction_data,
 	
 	// data memory
-	output [DMEM_WIDTH-1:0] data_addr,
-	output [3:0] data_we,
-	output [31:0] data_write,
-	input  [31:0] data_read
+	output reg [DMEM_WIDTH-1:0] data_addr,
+	output reg [3:0] data_we,
+	output reg [31:0] data_write,
+	input [31:0] data_read,
+	input data_valid
 
 );
 //////////////////// wires and registers ////////////////////
@@ -39,6 +40,7 @@ module rv32i_cpu
 	wire [3:0] alu_op;
 	wire [2:0] jump_type;
 	wire [1:0] regfile_src;
+	wire [1:0] mem_op;
 	wire [2:0] mem_read_type;
 //	wire [3:0] mem_write_mask;
 	
@@ -49,7 +51,7 @@ module rv32i_cpu
 	wire [31:0] pc_next;
 	
 	// register file fields
-	wire rd_we;
+	reg rd_we;
 	wire [4:0] regfile_addr;
 	wire [31:0] rd_data;
 	wire [31:0] rs1_data;
@@ -59,6 +61,10 @@ module rv32i_cpu
 	wire [31:0] alu_a;
 	wire [31:0] alu_b;
 	wire [31:0] alu_result;
+
+	// sign extend read data
+	wire data_sign;
+	wire [31:0] data_signed;
 
 
 //////////////////// instantiate modules ////////////////////
@@ -87,8 +93,9 @@ module rv32i_cpu
 		.alu_op (alu_op),
 		.jump_type (jump_type),
 		.regfile_src (regfile_src),
+		.mem_op (mem_op),
 		.mem_read_type (mem_read_type),
-		.mem_write_mask (data_we)
+		.mem_write_mask (mem_write_mask)
 	);
 	
 	program_counter _pc(
@@ -127,11 +134,22 @@ module rv32i_cpu
 	
 //////////////////// internal wiring ////////////////////
 	
+	// sign extend input data
+	assign data_sign = 	(mem_read_type == `MEM_RD_BYTE) ? data_read[7]:
+				(mem_read_type == `MEM_RD_HALF) ? data_read[7]:
+				1'b0;
+
+	assign data_signed =	(mem_read_type == `MEM_RD_BYTE)	? {{24{data_sign}}, data_read[7:0]}:	// lb
+				(mem_read_type == `MEM_RD_HALF)	? {{16{data_sign}}, data_read[15:0]}:	// lh
+				(mem_read_type == `MEM_RD_B_U) 	? {{24{1'b0}}, data_read[7:0]}:		// lbu
+				(mem_read_type == `MEM_RD_H_U) 	? {{16{1'b0}}, data_read[15:0]}:	// lhu
+				data_read;								// lw
+
 	// register file
 	assign regfile_addr =	(regfile_src != `REG_SRC_NONE) 	? rd_addr : {5{1'b0}};
 
 	assign rd_data = 	(regfile_src == `REG_SRC_ALU) 	? alu_result:
-				(regfile_src == `REG_SRC_MEM) 	? data_read:
+				(regfile_src == `REG_SRC_MEM) 	? data_signed:
 				(regfile_src == `REG_SRC_IMM) 	? immediate:
 				(regfile_src == `REG_SRC_PCP4) 	? pc_plus_4:
 				{32{1'b0}};
@@ -145,14 +163,13 @@ module rv32i_cpu
 
 //////////////////// cpu finite state machine ////////////////////
 	localparam IDLE	= 0;
-	localparam FETCH = 0;
-	localparam DECODE = 0;
-	localparam EXECUTE = 0;
-	localparam MEMORY_ACCESS = 0;
-	localparam MEMORY_ACCESS_WAIT = 0;
-	localparam WRITEBACK = 0;
+	localparam FETCH = 1;
+	localparam DECODE = 2;
+	localparam EXECUTE = 3;
+	localparam MEMORY_WAIT = 4;
+	localparam WRITE_BACK = 5;
 	
-	reg [2:0] current_state, next_state;
+	reg [3:0] current_state, next_state;
 	
 	always @(*) begin
 		next_state = current_state; // explicitly stay in current state if not told otherwise
@@ -162,18 +179,68 @@ module rv32i_cpu
 			end
 
 			FETCH: begin
-				// PC
-				update_pc = 1'b0;
+				next_state = DECODE;
+
+				// update program counter
+				update_pc = 1'b1;
+				// regfile write enable
+				rd_we = 1'b0;
 				
 				// fetch instruction
 				instruction = instruction_data;
-
-				next_state = DECODE;
 			end
 
 			DECODE: begin
-				
 				next_state = EXECUTE;
+
+				// update program counter
+				update_pc = 1'b0;
+				// regfile write enable
+				rd_we = 1'b0;
+			end
+
+			EXECUTE: begin
+				next_state = WRITE_BACK;
+
+				if(mem_op != `MEM_OP_NONE) begin
+					data_addr = alu_result;
+				end
+
+				if(mem_op == `MEM_OP_LOAD) begin
+					next_state = MEMORY_WAIT;
+				end
+				else if(mem_op == `MEM_OP_STORE) begin
+					next_state = WRITE_BACK;
+					data_we = mem_write_mask;
+					data_write = rs2_data;
+				end
+
+				// update program counter
+				update_pc = 1'b0;
+				// regfile write enable
+				rd_we = 1'b0;
+			end
+
+			MEMORY_WAIT: begin
+				next_state = MEMORY_WAIT;
+				if(data_valid)
+					next_state = WRITE_BACK;
+
+				// update program counter
+				update_pc = 1'b0;
+				// regfile write enable
+				rd_we = 1'b0;
+			end
+
+			WRITE_BACK: begin
+				next_state = FETCH;
+
+				inst_addr = pc_next;
+
+				// update program counter
+				update_pc = 1'b0;
+				// regfile write enable
+				rd_we = 1'b1;
 			end
 
 		endcase
