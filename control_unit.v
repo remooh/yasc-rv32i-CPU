@@ -16,6 +16,7 @@ module control_unit
 	
 	output [2:0] regfile_src,
 	
+	output [1:0] mem_op,
 	output [2:0] mem_read_type,
 	output [3:0] mem_write_mask
 );
@@ -74,6 +75,11 @@ module control_unit
 				(opcode == `OPCODE_I)		? `REG_SRC_ALU:
 				(opcode == `OPCODE_R)		? `REG_SRC_ALU:
 				`REG_SRC_NONE;
+	
+	// memory operation type
+	assign mem_op = 	(opcode == `OPCODE_I_LOAD)	? `MEM_OP_LOAD:
+				(opcode == `OPCODE_S)		? `MEM_OP_STORE:
+				`MEM_OP_NONE;
 	
 	// load operation type
 	assign mem_read_type = 	((opcode == `OPCODE_I_LOAD) && funct3 == 3'b000) ? `MEM_RD_BYTE:	// lb
