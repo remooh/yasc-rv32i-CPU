@@ -1,5 +1,11 @@
 `include "defines.v"
 
+`ifdef RISCV_FORMAL
+`define XLEN 32	// register file width
+`define NRET 1	// max number of retired instructions per cycle
+`define ILEN 32	// max instruction width
+`endif
+
 module rv32i_cpu
 #(
 	parameter IMEM_WIDTH = 16,
@@ -21,40 +27,39 @@ module rv32i_cpu
 	input 				data_mem_valid
 
 `ifdef RISCV_FORMAL
-	localparam XLEN = 32;	// register file width
-	localparam NRET = 1;	// max number of retired instructions per cycle
-	localparam ILEN = 32;	// max instruction width
-
+	,
 	// Instruction Metadata
-	output reg [NRET        - 1 : 0] rvfi_valid,
-	output reg [NRET *   64 - 1 : 0] rvfi_order,
-	output reg [NRET * ILEN - 1 : 0] rvfi_insn,
-	output reg [NRET        - 1 : 0] rvfi_trap,
-	output reg [NRET        - 1 : 0] rvfi_halt,
-	output reg [NRET        - 1 : 0] rvfi_intr,
-	output reg [NRET * 2    - 1 : 0] rvfi_mode,
-	output reg [NRET * 2    - 1 : 0] rvfi_ixl,
+	output reg [`NRET         - 1 : 0] rvfi_valid,
+	output reg [`NRET *    64 - 1 : 0] rvfi_order,
+	output reg [`NRET * `ILEN - 1 : 0] rvfi_insn,
+	output reg [`NRET         - 1 : 0] rvfi_trap,
+	output reg [`NRET         - 1 : 0] rvfi_halt,
+	output reg [`NRET         - 1 : 0] rvfi_intr,
+	output reg [`NRET * 2     - 1 : 0] rvfi_mode,
+	output reg [`NRET * 2     - 1 : 0] rvfi_ixl,
 
 	// Integer Register Read/Write
-	output reg [NRET *    5 - 1 : 0] rvfi_rs1_addr,
-	output reg [NRET *    5 - 1 : 0] rvfi_rs2_addr,
-	output reg [NRET * XLEN - 1 : 0] rvfi_rs1_rdata,
-	output reg [NRET * XLEN - 1 : 0] rvfi_rs2_rdata,
-	output reg [NRET *    5 - 1 : 0] rvfi_rs1_addr,
-	output reg [NRET *    5 - 1 : 0] rvfi_rs2_addr,
-	output reg [NRET * XLEN - 1 : 0] rvfi_rs1_rdata,
-	output reg [NRET * XLEN - 1 : 0] rvfi_rs2_rdata,
+	output reg [`NRET *     5 - 1 : 0] rvfi_rs1_addr,
+	output reg [`NRET *     5 - 1 : 0] rvfi_rs2_addr,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_rs1_rdata,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_rs2_rdata,
+	output reg [`NRET *     5 - 1 : 0] rvfi_rs1_addr,
+	output reg [`NRET *     5 - 1 : 0] rvfi_rs2_addr,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_rs1_rdata,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_rs2_rdata,
+	output reg [`NRET *     5 - 1 : 0] rvfi_rd_addr,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_rd_wdata,
 
 	// Program Counter
-	output reg [NRET * XLEN - 1 : 0] rvfi_pc_rdata,
-	output reg [NRET * XLEN - 1 : 0] rvfi_pc_wdata,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_pc_rdata,
+	output reg [`NRET * `XLEN - 1 : 0] rvfi_pc_wdata,
 
 	// Memory Access
-	output reg [NRET * XLEN   - 1 : 0] rvfi_mem_addr,
-	output reg [NRET * XLEN/8 - 1 : 0] rvfi_mem_rmask,
-	output reg [NRET * XLEN/8 - 1 : 0] rvfi_mem_wmask,
-	output reg [NRET * XLEN   - 1 : 0] rvfi_mem_rdata,
-	output reg [NRET * XLEN   - 1 : 0] rvfi_mem_wdata,
+	output reg [`NRET * `XLEN   - 1 : 0] rvfi_mem_addr,
+	output reg [`NRET * `XLEN/8 - 1 : 0] rvfi_mem_rmask,
+	output reg [`NRET * `XLEN/8 - 1 : 0] rvfi_mem_wmask,
+	output reg [`NRET * `XLEN   - 1 : 0] rvfi_mem_rdata,
+	output reg [`NRET * `XLEN   - 1 : 0] rvfi_mem_wdata
 `endif
 
 
@@ -70,6 +75,7 @@ module rv32i_cpu
 	wire [4:0] rs1_addr;
 	wire [4:0] rs2_addr;
 	wire [6:0] funct7;
+//	wire [3:0] inst_type;
 	wire [31:0] immediate;
 
 	// control unit fields
@@ -77,7 +83,7 @@ module rv32i_cpu
 	wire rs2_to_alu2;
 	wire [3:0] alu_op;
 	wire [2:0] jump_type;
-	wire [1:0] regfile_src;
+	wire [2:0] regfile_src;
 	wire [1:0] mem_op;
 	wire [2:0] mem_read_type;
 	wire [3:0] mem_write_mask;
@@ -104,6 +110,8 @@ module rv32i_cpu
 	wire data_mem_sign;
 	wire [31:0] data_mem_signed;
 
+	reg [3:0] memory_wait;
+
 `ifdef RISCV_FORMAL
 	wire [3:0] get_read_mask;
 `endif
@@ -119,7 +127,7 @@ module rv32i_cpu
 		.rs1_addr (rs1_addr),
 		.rs2_addr (rs2_addr),
 		.funct7 (funct7),
-		.inst_type (inst_type),
+		.inst_type (),
 		.immediate (immediate)
 	);
 	
@@ -216,8 +224,12 @@ module rv32i_cpu
 	localparam EXECUTE = 3;
 	localparam MEMORY_WAIT = 4;
 	localparam WRITE_BACK = 5;
+
+	localparam MAX_WAIT = 3;
 	
 	reg [3:0] current_state, next_state;
+	initial current_state = IDLE;
+	initial next_state = IDLE;
 	
 	always @(*) begin
 		next_state = current_state; // explicitly stay in current state if not told otherwise
@@ -225,9 +237,10 @@ module rv32i_cpu
 		case(current_state)
 			IDLE: begin
 				next_state = FETCH;
+				memory_wait = 0;
 `ifdef RISCV_FORMAL
 				rvfi_valid = 1'b0;
-				rvfi_order = {NRET*64{1'b0}};
+				rvfi_order = {`NRET*64{1'b0}};
 `endif
 			end
 
@@ -241,14 +254,18 @@ module rv32i_cpu
 				
 				// fetch instruction
 				instruction = instruction_data;
+
+				memory_wait = 0;
 `ifdef RISCV_FORMAL
 				rvfi_valid = 1'b0;
-				rvfi_order = rvfi_order + (NRET*64)'h1;
+				rvfi_order = rvfi_order + (`NRET*64)'h1;
 `endif
 			end
 
 			DECODE: begin
 				next_state = EXECUTE;
+
+				memory_wait = 0;
 
 				// update program counter
 				update_pc = 1'b0;
@@ -272,6 +289,8 @@ module rv32i_cpu
 					data_mem_write = rs2_data;
 				end
 
+				memory_wait = 0;
+
 				// update program counter
 				update_pc = 1'b0;
 				// regfile write enable
@@ -282,6 +301,8 @@ module rv32i_cpu
 				next_state = MEMORY_WAIT;
 				if(data_mem_valid)
 					next_state = WRITE_BACK;
+				else
+					memory_wait = memory_wait + 4'd1;
 
 				// update program counter
 				update_pc = 1'b0;
@@ -298,10 +319,17 @@ module rv32i_cpu
 				update_pc = 1'b0;
 				// regfile write enable
 				rd_we = 1'b1;
+
+				memory_wait = 0;
 `ifdef RISCV_FORMAL
 				// Instruction Metadata
 				rvfi_valid = 1'b1;
 				rvfi_insn = instruction;
+				rvfi_trap = 1'b0;
+				rvfi_halt = 1'b0;
+				rvfi_intr = 1'b0;
+				rvfi_mode = 2'b11; // current privilege level: Machine mode (level 3)
+				rvfi_ixl = 2'b01; // current machine XLEN (MXL): 1 (32 bit)
 
 				// Integer Register Read/Write
 				rvfi_rs1_addr = rs1_addr;
