@@ -66,7 +66,8 @@ module rv32i_cpu
 );
 //////////////////// wires and registers ////////////////////
 	// register storing instruction information
-	reg  [31:0] instruction; 
+	reg [31:0] instruction; 
+	reg [31:0] data; 
 
 	// decode fields
 	wire [6:0] opcode;
@@ -87,6 +88,7 @@ module rv32i_cpu
 	wire [1:0] mem_op;
 	wire [2:0] mem_read_type;
 	wire [3:0] mem_write_mask;
+	wire inst_valid;
 	
 	// program counter fields
 	reg update_pc;
@@ -96,7 +98,7 @@ module rv32i_cpu
 	
 	// register file fields
 	reg rd_we;
-	wire [4:0] regfile_addr;
+	wire [4:0] regfile_waddr;
 	wire [31:0] rd_data;
 	wire [31:0] rs1_data;
 	wire [31:0] rs2_data;
@@ -113,7 +115,7 @@ module rv32i_cpu
 	reg [3:0] memory_wait;
 
 `ifdef RISCV_FORMAL
-	wire [3:0] get_read_mask;
+	wire [3:0] data_read_mask;
 `endif
 
 //////////////////// instantiate modules ////////////////////
@@ -144,11 +146,13 @@ module rv32i_cpu
 		.regfile_src (regfile_src),
 		.mem_op (mem_op),
 		.mem_read_type (mem_read_type),
-		.mem_write_mask (mem_write_mask)
+		.mem_write_mask (mem_write_mask),
+		.inst_valid (inst_valid)
 	);
 	
 	program_counter _pc(
 		//inputs
+		.clk (clk),
 		.addr_offset (immediate),
 		.alu_result (alu_result),
 		.jump_type (jump_type),
@@ -163,7 +167,7 @@ module rv32i_cpu
 		//inputs
 		.clk (clk),
 		.rd_we (rd_we), 
-		.rd_addr (regfile_addr),
+		.rd_addr (regfile_waddr),
 		.rs1_addr (rs1_addr),
 		.rs2_addr (rs2_addr),
 		.rd_data (rd_data),
@@ -184,23 +188,23 @@ module rv32i_cpu
 //////////////////// internal wiring ////////////////////
 	
 	// sign extend input data
-	assign data_mem_sign = 	(mem_read_type == `MEM_RD_BYTE) ? data_mem_read[7]:
-				(mem_read_type == `MEM_RD_HALF) ? data_mem_read[7]:
+	assign data_mem_sign = 	(mem_read_type == `MEM_RD_BYTE) ? data[7]:
+				(mem_read_type == `MEM_RD_HALF) ? data[7]:
 				1'b0;
 
-	assign data_mem_signed =(mem_read_type == `MEM_RD_BYTE)	? {{24{data_mem_sign}}, data_mem_read[7:0]}:	// lb
-				(mem_read_type == `MEM_RD_HALF)	? {{16{data_mem_sign}}, data_mem_read[15:0]}:	// lh
-				(mem_read_type == `MEM_RD_B_U) 	? {{24{1'b0}}, data_mem_read[7:0]}:		// lbu
-				(mem_read_type == `MEM_RD_H_U) 	? {{16{1'b0}}, data_mem_read[15:0]}:		// lhu
-				data_mem_read;									// lw
+	assign data_mem_signed =(mem_read_type == `MEM_RD_BYTE)	? {{24{data_mem_sign}}, data[7:0]}:	// lb
+				(mem_read_type == `MEM_RD_HALF)	? {{16{data_mem_sign}}, data[15:0]}:	// lh
+				(mem_read_type == `MEM_RD_B_U) 	? {{24{1'b0}}, data[7:0]}:		// lbu
+				(mem_read_type == `MEM_RD_H_U) 	? {{16{1'b0}}, data[15:0]}:		// lhu
+				data;									// lw
 
 	// register file
-	assign regfile_addr =	(regfile_src != `REG_SRC_NONE) 	? rd_addr : {5{1'b0}};
+	assign regfile_waddr =	((regfile_src != `REG_SRC_NONE) && inst_valid) 	? rd_addr : {5{1'b0}};
 
-	assign rd_data = 	(regfile_src == `REG_SRC_ALU) 	? alu_result:
-				(regfile_src == `REG_SRC_MEM) 	? data_mem_signed:
-				(regfile_src == `REG_SRC_IMM) 	? immediate:
-				(regfile_src == `REG_SRC_PCP4) 	? pc_plus_4:
+	assign rd_data = 	(inst_valid && regfile_src == `REG_SRC_ALU) 	? alu_result:
+				(inst_valid && regfile_src == `REG_SRC_MEM) 	? data_mem_signed:
+				(inst_valid && regfile_src == `REG_SRC_IMM) 	? immediate:
+				(inst_valid && regfile_src == `REG_SRC_PCP4) 	? pc_plus_4:
 				{32{1'b0}};
 
 	// alu 1st operand
@@ -210,11 +214,12 @@ module rv32i_cpu
 	assign alu_b = 	(rs2_to_alu2 == `ALU2_SRC_RS2) ? rs2_data : immediate;
 
 `ifdef RISCV_FORMAL
-	assign get_read_mask =	(mem_read_type == `MEM_RD_BYTE)	? 4'b0001:
+	assign data_read_mask =	(mem_read_type == `MEM_RD_BYTE)	? 4'b0001:
 				(mem_read_type == `MEM_RD_HALF)	? 4'b0011:
 				(mem_read_type == `MEM_RD_B_U) 	? 4'b0001:
 				(mem_read_type == `MEM_RD_H_U) 	? 4'b0011:
-				4'b1111;
+				(mem_read_type == `MEM_RD_WORD)	? 4'b1111:
+				4'b0000;
 `endif
 
 //////////////////// cpu finite state machine ////////////////////
@@ -235,11 +240,13 @@ module rv32i_cpu
 		next_state = current_state; // explicitly stay in current state if not told otherwise
 		
 		// default assignements
-				memory_wait = 0;
-				// regfile write enable
-				rd_we = 1'b0;
-				// update program counter
-				update_pc = 1'b0;
+		memory_wait = 0;	// memory access wait
+		rd_we = 1'b0;		// regfile write enable
+		update_pc = 1'b0;	// update program counter
+
+`ifdef RISCV_FORMAL
+		rvfi_valid <= 1'b0;
+`endif
 
 		case(current_state)
 			IDLE: begin
@@ -249,8 +256,6 @@ module rv32i_cpu
 			FETCH: begin
 				next_state = DECODE;
 
-				// update program counter
-				update_pc = 1'b1;
 				
 				// fetch instruction
 				instruction = instruction_data;
@@ -264,26 +269,29 @@ module rv32i_cpu
 			EXECUTE: begin
 				next_state = WRITE_BACK;
 
+				data_mem_addr = 32'b0;
+				data_mem_write = 32'b0;
+				data_mem_wmask = 4'b0;
+
 				if(mem_op != `MEM_OP_NONE) begin
 					data_mem_addr = alu_result;
 				end
-
 				if(mem_op == `MEM_OP_LOAD) begin
 					next_state = MEMORY_WAIT;
 				end
-				else if(mem_op == `MEM_OP_STORE) begin
-					next_state = WRITE_BACK;
-					data_mem_wmask = mem_write_mask;
+				if(mem_op == `MEM_OP_STORE) begin
 					data_mem_write = rs2_data;
+					data_mem_wmask = mem_write_mask;
 				end
 			end
 
 			MEMORY_WAIT: begin
-				next_state = MEMORY_WAIT;
-				if(data_mem_valid)
-					next_state = WRITE_BACK;
-				else
-					memory_wait = memory_wait + 4'h1;
+//				next_state = MEMORY_WAIT;
+//				if(data_mem_valid)
+//					next_state = WRITE_BACK;
+//				else
+//					memory_wait = memory_wait + 4'h1;
+				next_state = WRITE_BACK;
 			end
 
 			WRITE_BACK: begin
@@ -293,6 +301,42 @@ module rv32i_cpu
 
 				// regfile write enable
 				rd_we = 1'b1;
+
+				// update program counter
+				update_pc = 1'b1;
+
+				if(mem_op == `MEM_OP_LOAD) begin
+					data = data_mem_read;
+				end
+`ifdef RISCV_FORMAL
+				// Instruction Metadata
+				rvfi_valid = 1'b1;
+				rvfi_insn = instruction;
+				rvfi_trap = 1'b0;
+				rvfi_halt = 1'b0;
+				rvfi_intr = 1'b0;
+				rvfi_mode = 2'b11; // current privilege level: Machine mode (level 3)
+				rvfi_ixl = 2'b01; // current machine XLEN (MXL): 1 (32 bit)
+
+				// Integer Register Read/Write
+				rvfi_rs1_addr = rs1_addr;
+				rvfi_rs2_addr = rs2_addr;
+				rvfi_rs1_rdata = rs1_data;
+				rvfi_rs2_rdata = rs2_data;
+				rvfi_rd_addr = regfile_waddr;
+				rvfi_rd_wdata = rd_data;
+
+				// Program Counter
+				rvfi_pc_rdata = pc_current;
+				rvfi_pc_wdata = inst_addr;
+
+				// Memory Access
+				rvfi_mem_addr = data_mem_addr;
+				rvfi_mem_rmask = data_read_mask;
+				rvfi_mem_wmask = data_mem_wmask;
+				rvfi_mem_rdata = data_mem_signed;
+				rvfi_mem_wdata = data_mem_write;
+`endif
 			end
 
 		endcase
@@ -304,44 +348,11 @@ module rv32i_cpu
 		if (reset) begin   
 			current_state <= IDLE;
 `ifdef RISCV_FORMAL
-			rvfi_valid <= 1'b0;
 			rvfi_order <= {`NRET*64{1'b0}};
 `endif
 		end
 
 `ifdef RISCV_FORMAL
-		if(current_state == WRITE_BACK) begin
-			// Instruction Metadata
-			rvfi_valid <= 1'b1;
-			rvfi_insn <= instruction;
-			rvfi_trap <= 1'b0;
-			rvfi_halt <= 1'b0;
-			rvfi_intr <= 1'b0;
-			rvfi_mode <= 2'b11; // current privilege level: Machine mode (level 3)
-			rvfi_ixl <= 2'b01; // current machine XLEN (MXL): 1 (32 bit)
-
-			// Integer Register Read/Write
-			rvfi_rs1_addr <= rs1_addr;
-			rvfi_rs2_addr <= rs2_addr;
-			rvfi_rs1_rdata <= rs1_data;
-			rvfi_rs2_rdata <= rs2_data;
-			rvfi_rd_addr <= rd_addr;
-			rvfi_rd_wdata <= rd_data;
-
-			// Program Counter
-			rvfi_pc_rdata <= pc_current;
-			rvfi_pc_wdata <= inst_addr;
-
-			// Memory Access
-			rvfi_mem_addr <= data_mem_addr;
-			rvfi_mem_rmask <= get_read_mask;
-			rvfi_mem_wmask <= data_mem_wmask;
-			rvfi_mem_rdata <= data_mem_read;
-			rvfi_mem_wdata <= data_mem_write;
-		end else begin
-			rvfi_valid <= 1'b0;
-		end
-
 		if(current_state == FETCH) begin
 			rvfi_order <= rvfi_order + (`NRET*64)'h1;
 		end

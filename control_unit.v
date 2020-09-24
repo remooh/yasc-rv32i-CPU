@@ -18,7 +18,9 @@ module control_unit
 	
 	output [1:0] mem_op,
 	output [2:0] mem_read_type,
-	output [3:0] mem_write_mask
+	output [3:0] mem_write_mask,
+
+	output inst_valid
 );
 
 	// alu operation
@@ -82,16 +84,25 @@ module control_unit
 				`MEM_OP_NONE;
 	
 	// load operation type
-	assign mem_read_type = 	((opcode == `OPCODE_I_LOAD) && funct3 == 3'b000) ? `MEM_RD_BYTE:	// lb
-				((opcode == `OPCODE_I_LOAD) && funct3 == 3'b001) ? `MEM_RD_HALF:	// lh
-				((opcode == `OPCODE_I_LOAD) && funct3 == 3'b010) ? `MEM_RD_WORD:	// lw
-				((opcode == `OPCODE_I_LOAD) && funct3 == 3'b100) ? `MEM_RD_B_U:		// lbu
-				((opcode == `OPCODE_I_LOAD) && funct3 == 3'b101) ? `MEM_RD_H_U:		// lhu
+	assign mem_read_type = 	((opcode == `OPCODE_I_LOAD) && (funct3 == 3'b000)) ? `MEM_RD_BYTE:	// lb
+				((opcode == `OPCODE_I_LOAD) && (funct3 == 3'b001)) ? `MEM_RD_HALF:	// lh
+				((opcode == `OPCODE_I_LOAD) && (funct3 == 3'b010)) ? `MEM_RD_WORD:	// lw
+				((opcode == `OPCODE_I_LOAD) && (funct3 == 3'b100)) ? `MEM_RD_B_U:	// lbu
+				((opcode == `OPCODE_I_LOAD) && (funct3 == 3'b101)) ? `MEM_RD_H_U:	// lhu
 				`MEM_RD_NONE;
 
 	// store operation type				
-	assign mem_write_mask = 	((opcode == `OPCODE_S) && funct3 == 3'b000) ? `MEM_WR_BYTE:	// sb
-					((opcode == `OPCODE_S) && funct3 == 3'b001) ? `MEM_WR_HALF:	// sh
-					((opcode == `OPCODE_S) && funct3 == 3'b010) ? `MEM_WR_WORD:	// sw
+	assign mem_write_mask = 	((opcode == `OPCODE_S) && (funct3 == 3'b000)) ? `MEM_WR_BYTE:	// sb
+					((opcode == `OPCODE_S) && (funct3 == 3'b001)) ? `MEM_WR_HALF:	// sh
+					((opcode == `OPCODE_S) && (funct3 == 3'b010)) ? `MEM_WR_WORD:	// sw
 					`MEM_WR_NONE;
+
+	// check if the instruction is valid
+	assign inst_valid =	((opcode == `OPCODE_I_JALR) && (funct3 != 3'b000))		? 1'b0:
+				((opcode == `OPCODE_B) && (jump_type == `JUMP_NONE))		? 1'b0:
+				((opcode == `OPCODE_I_LOAD) && (mem_read_type == `MEM_RD_NONE))	? 1'b0:
+				((opcode == `OPCODE_S) && (mem_write_mask == `MEM_WR_NONE))	? 1'b0:
+				((opcode == `OPCODE_I) && (alu_op == `ALU_NONE))		? 1'b0:
+				((opcode == `OPCODE_R) && (alu_op == `ALU_NONE))		? 1'b0:
+				1'b1;
 endmodule

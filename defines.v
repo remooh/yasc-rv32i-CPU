@@ -126,9 +126,9 @@
 `define JUMP_NONE	3'b000
 `define JUMP_IF_0	3'b010
 `define JUMP_IF_1	3'b011
-`define JUMP_JAL  3'b100
-`define JUMP_JALR 3'b101
-`define JUMP_ZERO 3'b000 // used for reset
+`define JUMP_JAL	3'b100
+`define JUMP_JALR	3'b101
+`define JUMP_ZERO	3'b111 // used for reset
 
 // memory operation (load or store)
 `define MEM_OP_NONE	2'b00

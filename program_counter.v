@@ -4,6 +4,7 @@ module program_counter
 #(	parameter DATA_WIDTH = 32)
 (
 	// Input Ports
+	input clk,
 	input [DATA_WIDTH-1:0] addr_offset,
 	input [DATA_WIDTH-1:0] alu_result,
 	input [2:0] jump_type,
@@ -34,8 +35,10 @@ module program_counter
 				(jump_type == `JUMP_ZERO) ? {DATA_WIDTH{1'b0}}:
 				pc_plus_4;
 	
-	always @ (posedge update_pc) begin
-		program_counter <= pc_next;
+	always @ (posedge clk) begin
+		if(update_pc) begin
+			program_counter <= pc_next;
+		end
 	end
 
 endmodule
