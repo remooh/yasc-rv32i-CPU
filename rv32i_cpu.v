@@ -116,6 +116,7 @@ module rv32i_cpu
 
 `ifdef RISCV_FORMAL
 	wire [3:0] data_read_mask;
+	reg [63:0] rvformal_order;
 `endif
 
 //////////////////// instantiate modules ////////////////////
@@ -201,10 +202,10 @@ module rv32i_cpu
 	// register file
 	assign regfile_waddr =	((regfile_src != `REG_SRC_NONE) && inst_valid) 	? rd_addr : {5{1'b0}};
 
-	assign rd_data = 	(inst_valid && regfile_src == `REG_SRC_ALU) 	? alu_result:
-				(inst_valid && regfile_src == `REG_SRC_MEM) 	? data_mem_signed:
-				(inst_valid && regfile_src == `REG_SRC_IMM) 	? immediate:
-				(inst_valid && regfile_src == `REG_SRC_PCP4) 	? pc_plus_4:
+	assign rd_data = 	(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_ALU) 	? alu_result:
+				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_MEM) 	? data_mem_signed:
+				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_IMM) 	? immediate:
+				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_PCP4)	? pc_plus_4:
 				{32{1'b0}};
 
 	// alu 1st operand
@@ -311,6 +312,7 @@ module rv32i_cpu
 `ifdef RISCV_FORMAL
 				// Instruction Metadata
 				rvfi_valid = 1'b1;
+				rvfi_order = rvformal_order;
 				rvfi_insn = instruction;
 				rvfi_trap = 1'b0;
 				rvfi_halt = 1'b0;
@@ -348,13 +350,13 @@ module rv32i_cpu
 		if (reset) begin   
 			current_state <= IDLE;
 `ifdef RISCV_FORMAL
-			rvfi_order <= {`NRET*64{1'b0}};
+			rvformal_order <= {`NRET*64{1'b0}};
 `endif
 		end
 
 `ifdef RISCV_FORMAL
 		if(current_state == FETCH) begin
-			rvfi_order <= rvfi_order + (`NRET*64)'h1;
+			rvformal_order <= rvformal_order + (`NRET*64)'h1;
 		end
 `endif
 	end
