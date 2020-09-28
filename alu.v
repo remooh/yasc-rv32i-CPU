@@ -13,17 +13,17 @@ module alu
 	output [DATA_WIDTH-1:0] result
 );
 
-	assign result =	(alu_op == `ALU_ADD) 	? operand_a + operand_b: // add
-							(alu_op == `ALU_SUB) 	? operand_a - operand_b: // sub
-							(alu_op == `ALU_AND) 	? operand_a & operand_b: // and
-							(alu_op == `ALU_OR)		? operand_a | operand_b: // or
-							(alu_op == `ALU_XOR) 	? operand_a ^ operand_b: // xor
-							(alu_op == `ALU_SLL) 	? operand_a << operand_b[4:0]: // sll
-							(alu_op == `ALU_SRL) 	? operand_a >> operand_b[4:0]: // srl
-							(alu_op == `ALU_SRA) 	? $signed(operand_a) >>> operand_b[4:0]: // sra
-							(alu_op == `ALU_SLT) 	? {{31{1'b0}}, $signed(operand_a) < $signed(operand_b)}: //slt
-							(alu_op == `ALU_SLTU) 	? {{31{1'b0}}, operand_a < operand_b}: // sltu
-							{DATA_WIDTH{1'b0}};
+	assign result =	(alu_op == `ALU_ADD)	? operand_a + operand_b: // add
+			(alu_op == `ALU_SUB)	? operand_a - operand_b: // sub
+			(alu_op == `ALU_AND)	? operand_a & operand_b: // and
+			(alu_op == `ALU_OR)	? operand_a | operand_b: // or
+			(alu_op == `ALU_XOR)	? operand_a ^ operand_b: // xor
+			(alu_op == `ALU_SLL)	? operand_a << operand_b[4:0]: // sll
+			(alu_op == `ALU_SRL)	? operand_a >> operand_b[4:0]: // srl
+			(alu_op == `ALU_SRA)	? $signed($signed(operand_a) >>> operand_b[4:0]): // sra
+			(alu_op == `ALU_SLT)	? {{31{1'b0}}, $signed(operand_a) < $signed(operand_b)}: //slt
+			(alu_op == `ALU_SLTU)	? {{31{1'b0}}, operand_a < operand_b}: // sltu
+			{DATA_WIDTH{1'b0}};
 
 //	always@(posedge clk)
 //	begin
