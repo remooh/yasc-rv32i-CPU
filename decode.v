@@ -15,7 +15,9 @@ module decode
 	output [6:0] funct7,
 	
 	output [3:0] inst_type,
-	output [31:0] immediate
+	output [31:0] immediate,
+
+	output opcode_valid
 );
 
 	wire sign;
@@ -50,5 +52,6 @@ module decode
 				(inst_type == `TYPE_J) ? {{12{sign}}, rs1_addr, funct3, rs2_addr[0], funct7[5:0], rs2_addr[4:1], 1'b0}:
 				(inst_type == `TYPE_B) ? {{20{sign}}, rd_addr[0], funct7[5:0], rs2_addr[4:1], 1'b0}: 
 				{32{1'b0}};
-								
+
+	assign opcode_valid =	!(opcode == `TYPE_INVALID);
 endmodule
