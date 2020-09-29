@@ -20,7 +20,7 @@ module control_unit
 	output [2:0] mem_read_type,
 	output [3:0] mem_write_mask,
 
-	output inst_valid
+	output funct3_valid
 );
 
 	// alu operation
@@ -98,11 +98,9 @@ module control_unit
 					`MEM_WR_NONE;
 
 	// check if the instruction is valid
-	assign inst_valid =	((opcode == `OPCODE_I_JALR) && (funct3 != 3'b000))		? 1'b0:
+	assign funct3_valid =	((opcode == `OPCODE_I_JALR) && (funct3 != 3'b000))		? 1'b0:
 				((opcode == `OPCODE_B) && (jump_type == `JUMP_NONE))		? 1'b0:
 				((opcode == `OPCODE_I_LOAD) && (mem_read_type == `MEM_RD_NONE))	? 1'b0:
 				((opcode == `OPCODE_S) && (mem_write_mask == `MEM_WR_NONE))	? 1'b0:
-				((opcode == `OPCODE_I) && (alu_op == `ALU_NONE))		? 1'b0:
-				((opcode == `OPCODE_R) && (alu_op == `ALU_NONE))		? 1'b0:
 				1'b1;
 endmodule
