@@ -109,12 +109,16 @@ module rv32i_cpu
 	wire [31:0] alu_b;
 	wire [31:0] alu_result;
 
+	// data shifts for alignement
+	wire [4:0] dmem_shamt;
+
 	// sign extend read data
-	wire data_mem_sign;
-	wire [31:0] data_mem_signed;
+	wire [31:0] dmem_read_shift;
+	wire [31:0] dmem_read_signed;
 
 	// internal
 	wire inst_valid;
+	wire dmem_access_valid;
 	reg [3:0] memory_wait;
 
 `ifdef RISCV_FORMAL
@@ -192,22 +196,23 @@ module rv32i_cpu
 	
 //////////////////// internal wiring ////////////////////
 
-	// sign extend input data
-	assign data_mem_sign = 	(mem_read_type == `MEM_RD_BYTE) ? data[7]:
-				(mem_read_type == `MEM_RD_HALF) ? data[7]:
-				1'b0;
+	// shift ammount for alignement of data memory operations 
+	assign dmem_shamt = {alu_result[1:0], 3'b000}; // lower address bits *8
 
-	assign data_mem_signed =(mem_read_type == `MEM_RD_BYTE)	? {{24{data_mem_sign}}, data[7:0]}:	// lb
-				(mem_read_type == `MEM_RD_HALF)	? {{16{data_mem_sign}}, data[15:0]}:	// lh
-				(mem_read_type == `MEM_RD_B_U) 	? {{24{1'b0}}, data[7:0]}:		// lbu
-				(mem_read_type == `MEM_RD_H_U) 	? {{16{1'b0}}, data[15:0]}:		// lhu
-				data;									// lw
+	// shift and sign extend input data
+	assign dmem_read_shift = data >> dmem_shamt;
+
+	assign dmem_read_signed =	(mem_read_type == `MEM_RD_BYTE)	? {{24{dmem_read_shift[7]}}, dmem_read_shift[7:0]}:	// lb
+					(mem_read_type == `MEM_RD_HALF)	? {{16{dmem_read_shift[15]}}, dmem_read_shift[15:0]}:	// lh
+					(mem_read_type == `MEM_RD_B_U) 	? {{24{1'b0}}, dmem_read_shift[7:0]}:			// lbu
+					(mem_read_type == `MEM_RD_H_U) 	? {{16{1'b0}}, dmem_read_shift[15:0]}:			// lhu
+					dmem_read_shift;									// lw
 
 	// register file
 	assign regfile_waddr =	((regfile_src != `REG_SRC_NONE) && funct3_valid) 	? rd_addr : {5{1'b0}};
 
 	assign rd_data = 	(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_ALU) 	? alu_result:
-				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_MEM) 	? data_mem_signed:
+				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_MEM) 	? dmem_read_signed:
 				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_IMM) 	? immediate:
 				(regfile_waddr != 5'b0 && regfile_src == `REG_SRC_PCP4)	? pc_plus_4:
 				{32{1'b0}};
@@ -218,7 +223,18 @@ module rv32i_cpu
 	// alu 2nd operand
 	assign alu_b = 	(rs2_to_alu2 == `ALU2_SRC_RS2) ? rs2_data : immediate;
 
+	assign dmem_access_valid =	(mem_op == `MEM_OP_NONE) || 
+					(mem_read_type == `MEM_RD_BYTE) ||
+					(mem_read_type == `MEM_RD_HALF && alu_result[0] == 1'b0) ||
+					(mem_read_type == `MEM_RD_B_U) ||
+					(mem_read_type == `MEM_RD_H_U && alu_result[0] == 1'b0) ||
+					(mem_read_type == `MEM_RD_WORD && alu_result[1:0] == 1'b00) ||
+					(mem_write_mask == `MEM_WR_BYTE) ||
+					(mem_write_mask == `MEM_WR_HALF && alu_result[0] == 1'b0) ||
+					(mem_write_mask == `MEM_WR_WORD && alu_result[1:0] == 1'b00);
+
 `ifdef RISCV_FORMAL
+	// design doesn't use this, just for compatibility with rvfi
 	assign data_read_mask =	(mem_read_type == `MEM_RD_BYTE)	? 4'b0001:
 				(mem_read_type == `MEM_RD_HALF)	? 4'b0011:
 				(mem_read_type == `MEM_RD_B_U) 	? 4'b0001:
@@ -279,13 +295,13 @@ module rv32i_cpu
 				data_mem_wmask = 4'b0;
 
 				if(mem_op != `MEM_OP_NONE) begin
-					data_mem_addr = alu_result;
+					data_mem_addr = {alu_result[31:2], 2'b00};
 				end
 				if(mem_op == `MEM_OP_LOAD) begin
 					next_state = MEMORY_WAIT;
 				end else if(mem_op == `MEM_OP_STORE) begin
-					data_mem_write = rs2_data;
-					data_mem_wmask = mem_write_mask;
+					data_mem_write = rs2_data << dmem_shamt;
+					data_mem_wmask = mem_write_mask << alu_result[1:0];
 				end
 			end
 
@@ -318,7 +334,7 @@ module rv32i_cpu
 				rvfi_order = rvformal_order;
 				rvfi_insn = instruction;
 				rvfi_trap = 1'b0;
-				if(!opcode_valid || (mem_op != `MEM_OP_NONE && alu_result[1:0] != 2'b00))
+				if(!(opcode_valid && dmem_access_valid && (jump_type == `JUMP_NONE || inst_addr[1:0] == 2'b00)))
 					rvfi_trap = 1'b1;
 				rvfi_halt = 1'b0;
 				rvfi_intr = 1'b0;
@@ -339,9 +355,9 @@ module rv32i_cpu
 
 				// Memory Access
 				rvfi_mem_addr = data_mem_addr;
-				rvfi_mem_rmask = data_read_mask;
+				rvfi_mem_rmask = data_read_mask << alu_result[1:0];
 				rvfi_mem_wmask = data_mem_wmask;
-				rvfi_mem_rdata = data_mem_signed;
+				rvfi_mem_rdata = data_mem_read;
 				rvfi_mem_wdata = data_mem_write;
 `endif
 			end
