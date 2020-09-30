@@ -3,7 +3,7 @@ module register_file
 (
 	// Input Ports
 	input clk,
-	input	rd_we,
+	input rd_we,
 	input [4:0] rd_addr,
 	input [4:0] rs1_addr,
 	input [4:0] rs2_addr,
@@ -25,35 +25,11 @@ module register_file
 
 	always @ (posedge clk)
 	begin
-	
 		// Write
-		if (rd_we && (rd_addr != 5'b00000)) // all registers were initialized to 0, do not touch x0
+		if (rd_we)
 			register_file[rd_addr] <= rd_data;
 
 		rs1_data <= register_file[rs1_addr];
 		rs2_data <= register_file[rs2_addr];
 	end
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
