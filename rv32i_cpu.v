@@ -96,6 +96,7 @@ module rv32i_cpu
 	wire [31:0] pc_current;
 	wire [31:0] pc_plus_4;
 	wire [31:0] pc_next;
+	wire pc_next_valid;
 	
 	// register file fields
 	reg rd_we;
@@ -169,7 +170,8 @@ module rv32i_cpu
 		//outputs
 		.pc_current (pc_current),
 		.pc_plus_4 (pc_plus_4),
-		.pc_next (pc_next)
+		.pc_next (pc_next),
+		.pc_next_valid (pc_next_valid)
 	);
 	
 	register_file _regfile(
@@ -223,6 +225,7 @@ module rv32i_cpu
 	// alu 2nd operand
 	assign alu_b = 	(rs2_to_alu2 == `ALU2_SRC_RS2) ? rs2_data : immediate;
 
+	// make sure that every data memory access is aligned to each type
 	assign dmem_access_valid =	(mem_op == `MEM_OP_NONE) || 
 					(mem_read_type == `MEM_RD_BYTE) ||
 					(mem_read_type == `MEM_RD_HALF && alu_result[0] == 1'b0) ||
@@ -334,7 +337,7 @@ module rv32i_cpu
 				rvfi_order = rvformal_order;
 				rvfi_insn = instruction;
 				rvfi_trap = 1'b0;
-				if(!(opcode_valid && dmem_access_valid && (jump_type == `JUMP_NONE || inst_addr[1:0] == 2'b00)))
+				if(!(opcode_valid && dmem_access_valid && pc_next_valid))
 					rvfi_trap = 1'b1;
 				rvfi_halt = 1'b0;
 				rvfi_intr = 1'b0;
