@@ -44,6 +44,7 @@ module control_unit
 			((opcode == `OPCODE_B) && funct3 == 3'b110)				? `ALU_SLTU: // bltu
 			((opcode == `OPCODE_B) && funct3 == 3'b111)				? `ALU_SLTU: // bgeu
 			(opcode == `OPCODE_U_AUIPC)						? `ALU_ADD:  // auipc
+			(opcode == `OPCODE_I_JALR)						? `ALU_ADD:  // jalr
 			(opcode == `OPCODE_I_LOAD)						? `ALU_ADD:  // load
 			(opcode == `OPCODE_S)							? `ALU_ADD:  // store
 			`ALU_NONE;
@@ -72,6 +73,7 @@ module control_unit
 	assign regfile_src =	(opcode == `OPCODE_U_LUI)	? `REG_SRC_IMM:
 				(opcode == `OPCODE_U_AUIPC)	? `REG_SRC_ALU:
 				(opcode == `OPCODE_J_JAL)	? `REG_SRC_PCP4:
+				(opcode == `OPCODE_B)		? `REG_SRC_PCP4:
 				(opcode == `OPCODE_I_JALR)	? `REG_SRC_PCP4:
 				(opcode == `OPCODE_I_LOAD)	? `REG_SRC_MEM:
 				(opcode == `OPCODE_I)		? `REG_SRC_ALU:
