@@ -50,7 +50,7 @@ module decode
 				(inst_type == `TYPE_S) ? {{20{sign}}, funct7, rd_addr}:
 				(inst_type == `TYPE_U) ? {funct7, rs2_addr, rs1_addr, funct3, {12{1'b0}}}: 
 				(inst_type == `TYPE_J) ? {{12{sign}}, rs1_addr, funct3, rs2_addr[0], funct7[5:0], rs2_addr[4:1], 1'b0}:
-				(inst_type == `TYPE_B) ? {{20{sign}}, rd_addr[0], funct7[5:0], rs2_addr[4:1], 1'b0}: 
+				(inst_type == `TYPE_B) ? {{20{sign}}, rd_addr[0], funct7[5:0], rd_addr[4:1], 1'b0}: 
 				{32{1'b0}};
 
 	assign opcode_valid =	!(opcode == `TYPE_INVALID);
