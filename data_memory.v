@@ -5,133 +5,79 @@ module data_memory
 	input we,
 	input [3:0] mem_op,
 	input [ADDR_WIDTH-1:0] data_addr,
-	input [31:0] write_data,
-	output reg data_valid,
-	output reg [31:0] read_data
+	input [31:0] data_write,
+	output [31:0] data_read
 );
+	// Variable to hold the registered read address
+	reg [ADDR_WIDTH-1:0] data_addr_reg;
 
-	////////// ALTERA DUAL PORT RAM //////////
-
-	// memory block adressed by byte
-	reg [7:0] data_mem[2**ADDR_WIDTH-1:0];
+	//  RAM array
+	reg [7:0] ram_0[2**ADDR_WIDTH-1:0];
+	reg [7:0] ram_1[2**ADDR_WIDTH-1:0];
+	reg [7:0] ram_2[2**ADDR_WIDTH-1:0];
+	reg [7:0] ram_3[2**ADDR_WIDTH-1:0];
 	
-	reg we_a, we_b;
-	reg [7:0] data_a, data_b, q_a, q_b;
-	reg [ADDR_WIDTH-1:0] addr_a, addr_b;
-	
-	// initialize
-	initial
-	begin : INIT
-		integer i;
-		for(i = 0; i < 8; i=i+1)
-			data_mem[i] = 8'h00;
-	end
-	
-	// Port A 
 	always @ (posedge clk)
 	begin
-		if (we_a) 
-		begin
-			data_mem[addr_a] <= data_a;
-			q_a <= data_a;
-		end
-		else 
-		begin
-			q_a <= data_mem[addr_a];
-		end 
-	end 
-	
-	// Port B 
-	always @ (posedge clk)
-	begin
-		if (we_b) 
-		begin
-			data_mem[addr_b] <= data_b;
-			q_b <= data_b;
-		end
-		else 
-		begin
-			q_b <= data_mem[addr_b];
-		end 
+		// Write
+		if (mem_op[0] && we)
+			ram_0[data_addr] <= data_write[7:0];
+		if (mem_op[1] && we)
+			ram_1[data_addr] <= data_write[15:8];
+		if (mem_op[2] && we)
+			ram_2[data_addr] <= data_write[23:16];
+		if (mem_op[3] && we)
+			ram_3[data_addr] <= data_write[31:24];
+
+		data_addr_reg <= data_addr;
 	end
 	
-	////////// END ALTERA DUAL PORT RAM //////////
-	
-	
-	////////// MEMORY CONTROLLER STATE MACHINE //////////
+	assign data_read = {ram_3[data_addr_reg], ram_2[data_addr_reg], ram_1[data_addr_reg], ram_0[data_addr_reg]};
 
-	// finite state machine
-	localparam IDLE	= 0;
-	localparam LOWER 	= 1;
-	localparam UPPER 	= 2;
-	reg[1:0] current_state, next_state, last_state;
-	
-	reg [31:0] buffer_write;
-	reg [15:0] buffer_read;
-	reg [ADDR_WIDTH-1:0]  buffer_addr;
-
-	always @(*) begin
-		next_state = current_state;
-	
-		case(current_state)
-			IDLE: begin
-				last_state = IDLE;
-				next_state = IDLE;
-				data_valid = 1'b1;
-				
-				if(buffer_addr != data_addr) begin
-					buffer_addr = data_addr;
-					buffer_write = write_data;
-
-					next_state = LOWER;
-				end
-			end
-
-			LOWER: begin
-				next_state = UPPER;
-				last_state = LOWER;
-				data_valid = 1'b0;
-				
-				addr_a = buffer_addr;
-				we_a = we && mem_op[0];
-				data_a = buffer_write[7:0];
-				
-				addr_b = buffer_addr+1;
-				we_b = we && mem_op[1];
-				data_b = buffer_write[15:8];
-			end
-			
-			UPPER: begin
-				next_state = IDLE;
-				last_state = UPPER;
-				data_valid = 1'b0;
-				
-				addr_a = buffer_addr+2;
-				we_a = we && mem_op[2];
-				data_a = buffer_write[23:16];
-				
-				addr_b = buffer_addr+3;
-				we_b = we && mem_op[3];
-				data_b = buffer_write[31:24];
-				
-				buffer_read[7:0] = q_a;
-				buffer_read[15:8] = q_b;
-			end
-		endcase
-	end
-
-	
-	always @(*) begin
-		if(data_valid) begin
-			read_data[7:0] = buffer_read[7:0];
-			read_data[15:8] = buffer_read[15:8];
-			read_data[23:16] = q_a;
-			read_data[31:24] = q_b;
-		end
-	end
-	
-	always @(posedge clk) begin
-		current_state = next_state;
-	end
-	////////// MEMORY CONTROLLER STATE MACHINE //////////
 endmodule
+
+
+//// Quartus Prime Verilog Template
+//// Single port RAM with single read/write address and initial contents 
+//// specified with an initial block
+//
+//module single_port_ram_with_init
+//#(parameter DATA_WIDTH=8, parameter ADDR_WIDTH=6)
+//(
+//	input [(DATA_WIDTH-1):0] data,
+//	input [(ADDR_WIDTH-1):0] addr,
+//	input we, clk,
+//	output [(DATA_WIDTH-1):0] q
+//);
+//
+//	// Declare the RAM variable
+//	reg [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
+//
+//	// Variable to hold the registered read address
+//	reg [ADDR_WIDTH-1:0] addr_reg;
+//
+//	// Specify the initial contents.  You can also use the $readmemb
+//	// system task to initialize the RAM variable from a text file.
+//	// See the $readmemb template page for details.
+//	initial 
+//	begin : INIT
+//		integer i;
+//		for(i = 0; i < 2**ADDR_WIDTH; i = i + 1)
+//			ram[i] = {DATA_WIDTH{1'b1}};
+//	end 
+//
+//	always @ (posedge clk)
+//	begin
+//		// Write
+//		if (we)
+//			ram[addr] <= data;
+//
+//		addr_reg <= addr;
+//	end
+//
+//	// Continuous assignment implies read returns NEW data.
+//	// This is the natural behavior of the TriMatrix memory
+//	// blocks in Single Port mode.  
+//	assign q = ram[addr_reg];
+//
+//endmodule
