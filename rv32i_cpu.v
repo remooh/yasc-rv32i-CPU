@@ -248,11 +248,10 @@ module rv32i_cpu
 
 //////////////////// cpu finite state machine ////////////////////
 	localparam IDLE	= 0;
-	localparam FETCH = 1;
-	localparam DECODE = 2;
-	localparam EXECUTE = 3;
-	localparam MEMORY_WAIT = 4;
-	localparam WRITE_BACK = 5;
+	localparam FETCH_DECODE = 1;
+	localparam MEMORY_ACCESS = 2;
+	localparam MEMORY_WAIT = 3;
+	localparam WRITE_BACK = 4;
 
 	localparam MAX_WAIT = 3;
 	
@@ -274,23 +273,17 @@ module rv32i_cpu
 
 		case(current_state)
 			IDLE: begin
-				next_state = FETCH;
+				next_state = FETCH_DECODE;
 			end
 
-			FETCH: begin
-				next_state = DECODE;
+			FETCH_DECODE: begin
+				next_state = MEMORY_ACCESS;
 
-				
 				// fetch instruction
 				instruction = instruction_data;
-
 			end
 
-			DECODE: begin
-				next_state = EXECUTE;
-			end
-
-			EXECUTE: begin
+			MEMORY_ACCESS: begin
 				next_state = WRITE_BACK;
 
 				data_mem_addr = 32'b0;
@@ -318,7 +311,7 @@ module rv32i_cpu
 			end
 
 			WRITE_BACK: begin
-				next_state = FETCH;
+				next_state = FETCH_DECODE;
 
 				inst_addr = pc_next;
 
@@ -379,7 +372,7 @@ module rv32i_cpu
 		end
 
 `ifdef RISCV_FORMAL
-		if(current_state == FETCH) begin
+		if(current_state == FETCH_DECODE) begin
 			rvformal_order <= rvformal_order + (`NRET*64)'h1;
 		end
 `endif
