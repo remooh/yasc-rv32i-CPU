@@ -37,8 +37,8 @@ module control_unit
 				&& funct3 == 3'b101 && !funct7[5])				? `ALU_SRL:  // srl, srli
 			((opcode == `OPCODE_R || opcode == `OPCODE_I)
 				&& funct3 == 3'b101 && funct7[5])				? `ALU_SRA:  // sra, srai
-			((opcode == `OPCODE_B) && funct3 == 3'b000)				? `ALU_XOR:  // beq
-			((opcode == `OPCODE_B) && funct3 == 3'b001)				? `ALU_XOR:  // bne
+			((opcode == `OPCODE_B) && funct3 == 3'b000)				? `ALU_SEQ:  // beq
+			((opcode == `OPCODE_B) && funct3 == 3'b001)				? `ALU_SEQ:  // bne
 			((opcode == `OPCODE_B) && funct3 == 3'b100)				? `ALU_SLT:  // blt
 			((opcode == `OPCODE_B) && funct3 == 3'b101)				? `ALU_SLT:  // bge
 			((opcode == `OPCODE_B) && funct3 == 3'b110)				? `ALU_SLTU: // bltu
@@ -61,8 +61,8 @@ module control_unit
 	// jump condition
 	assign jump_type =	(opcode == `OPCODE_J_JAL)			? `JUMP_JAL:	// jal
 				(opcode == `OPCODE_I_JALR)			? `JUMP_JALR:	// jalr
-				((opcode == `OPCODE_B) && funct3 == 3'b000)	? `JUMP_IF_0:	// beq
-				((opcode == `OPCODE_B) && funct3 == 3'b001)	? `JUMP_IF_1:	// bne
+				((opcode == `OPCODE_B) && funct3 == 3'b000)	? `JUMP_IF_1:	// beq
+				((opcode == `OPCODE_B) && funct3 == 3'b001)	? `JUMP_IF_0:	// bne
 				((opcode == `OPCODE_B) && funct3 == 3'b100)	? `JUMP_IF_1:	// blt
 				((opcode == `OPCODE_B) && funct3 == 3'b101)	? `JUMP_IF_0:	// bge
 				((opcode == `OPCODE_B) && funct3 == 3'b110)	? `JUMP_IF_1:	// bltu

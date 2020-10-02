@@ -105,6 +105,7 @@
 `define ALU_SRA		4'b0111
 `define ALU_SLT		4'b1000
 `define ALU_SLTU	4'b1001
+`define ALU_SEQ		4'b1010
 `define ALU_NONE	4'b1111
 
 // ALU 1st operand source
