@@ -23,8 +23,8 @@ module rv32i_cpu
 	output reg [DMEM_WIDTH-1:0] 	data_mem_addr,
 	output reg [3:0] 		data_mem_wmask,
 	output reg [31:0] 		data_mem_write,
-	input [31:0]			data_mem_read,
-	input 				data_mem_valid
+	output reg			data_mem_w_en,
+	input [31:0]			data_mem_read
 
 `ifdef RISCV_FORMAL
 	,
@@ -120,7 +120,6 @@ module rv32i_cpu
 	// internal
 	wire inst_valid;
 	wire dmem_access_valid;
-	reg [3:0] memory_wait;
 
 `ifdef RISCV_FORMAL
 	wire [3:0] data_read_mask;
@@ -260,12 +259,12 @@ module rv32i_cpu
 	initial next_state = IDLE;
 	
 	always @(*) begin
-		next_state = current_state; // explicitly stay in current state if not told otherwise
-		
+		next_state = current_state;
+
 		// default assignements
-		memory_wait = 0;	// memory access wait
 		rd_we = 1'b0;		// regfile write enable
 		update_pc = 1'b0;	// update program counter
+		data_mem_w_en = 1'b0;	// data memory write enable
 
 `ifdef RISCV_FORMAL
 		rvfi_valid <= 1'b0;
@@ -298,15 +297,11 @@ module rv32i_cpu
 				end else if(mem_op == `MEM_OP_STORE) begin
 					data_mem_write = rs2_data << dmem_shamt;
 					data_mem_wmask = mem_write_mask << alu_result[1:0];
+					data_mem_w_en = 1'b1;
 				end
 			end
 
 			MEMORY_WAIT: begin
-//				next_state = MEMORY_WAIT;
-//				if(data_mem_valid)
-//					next_state = WRITE_BACK;
-//				else
-//					memory_wait = memory_wait + 4'h1;
 				next_state = WRITE_BACK;
 			end
 
@@ -379,43 +374,3 @@ module rv32i_cpu
 	end
 
 endmodule
-
-
-//	assign x =  (opcode == `OPCODE_U_LUI) 		? `:
-//					(opcode == `OPCODE_U_AUIPC) 	? `:
-//					(opcode == `OPCODE_J_JAL) 		? `:
-//					(opcode == `OPCODE_I_JALR) 	? `:
-//					(opcode == `OPCODE_B) 			? `:
-//					(opcode == `OPCODE_I_LOAD) 	? `:
-//					(opcode == `OPCODE_S) 			? `:
-//					(opcode == `OPCODE_I) 			? `:
-//					(opcode == `OPCODE_R) 			? `:
-//					`;
-
-//	always @(*) begin
-//		if				(opcode == `OPCODE_U_LUI) 		begin
-//
-//		end else if	(opcode == `OPCODE_U_AUIPC) 	begin
-//
-//		end else if	(opcode == `OPCODE_J_JAL) 		begin
-//
-//		end else if	(opcode == `OPCODE_I_JALR) 	begin
-//
-//		end else if	(opcode == `OPCODE_B) 			begin
-//
-//		end else if	(opcode == `OPCODE_I_LOAD) 	begin
-//
-//		end else if	(opcode == `OPCODE_S) 			begin
-//
-//		end else if	(opcode == `OPCODE_I) 			begin
-//
-//		end else if	(opcode == `OPCODE_R) 			begin
-//
-//		end else if	(opcode == `OPCODE_I_FENCE) 	begin
-//
-//		end else if	(opcode == `OPCODE_I_CSR) 		begin
-//
-//		end else begin
-//
-//		end
-//	end
