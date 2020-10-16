@@ -3,7 +3,7 @@ module data_memory
 (
 	input clk,
 	input we,
-	input [3:0] mem_op,
+	input [3:0] mem_wmask,
 	input [ADDR_WIDTH-1:0] data_addr,
 	input [31:0] data_write,
 	output [31:0] data_read
@@ -20,13 +20,13 @@ module data_memory
 	always @ (posedge clk)
 	begin
 		// Write
-		if (mem_op[0] && we)
+		if (mem_wmask[0] && we)
 			ram_0[data_addr] <= data_write[7:0];
-		if (mem_op[1] && we)
+		if (mem_wmask[1] && we)
 			ram_1[data_addr] <= data_write[15:8];
-		if (mem_op[2] && we)
+		if (mem_wmask[2] && we)
 			ram_2[data_addr] <= data_write[23:16];
-		if (mem_op[3] && we)
+		if (mem_wmask[3] && we)
 			ram_3[data_addr] <= data_write[31:24];
 
 		data_addr_reg <= data_addr;
