@@ -8,8 +8,8 @@
 
 module rv32i_cpu
 #(
-	parameter IMEM_WIDTH = 16,
-	parameter DMEM_WIDTH = 16
+	parameter IMEM_WIDTH = 32,
+	parameter DMEM_WIDTH = 32
 )
 (
 	input clk,
@@ -254,7 +254,8 @@ module rv32i_cpu
 
 	localparam MAX_WAIT = 3;
 	
-	reg [3:0] current_state, next_state;
+	reg [3:0] current_state;
+	reg [3:0] next_state;
 	initial current_state = IDLE;
 	initial next_state = IDLE;
 	
@@ -273,6 +274,8 @@ module rv32i_cpu
 		case(current_state)
 			IDLE: begin
 				next_state = FETCH_DECODE;
+
+				inst_addr = 32'b0;
 			end
 
 			FETCH_DECODE: begin

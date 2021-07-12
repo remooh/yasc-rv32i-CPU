@@ -21,6 +21,10 @@ module program_counter
 	// program counter
 	reg [DATA_WIDTH-1:0] program_counter;
 
+	initial begin
+		program_counter = 32'b0;
+	end
+
 	wire [DATA_WIDTH-1:0] pc_offset;
 	wire [DATA_WIDTH-1:0] jalr_addr;
 	wire [31:0] _pc_next;
