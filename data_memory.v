@@ -1,5 +1,5 @@
 module data_memory
-#(      parameter ADDR_WIDTH = 12)
+#(      parameter ADDR_WIDTH = 13)
 (
 	input clk,
 	input we,
@@ -12,72 +12,36 @@ module data_memory
 	reg [ADDR_WIDTH-1:0] data_addr_reg;
 
 	//  RAM array
-	reg [7:0] ram_0[2**ADDR_WIDTH-1:0];
-	reg [7:0] ram_1[2**ADDR_WIDTH-1:0];
-	reg [7:0] ram_2[2**ADDR_WIDTH-1:0];
-	reg [7:0] ram_3[2**ADDR_WIDTH-1:0];
+	reg [31:0] ram[2**ADDR_WIDTH-1:0];
+
+	//initial
+	//begin : INIT
+	//	integer i;
+	//	for(i = 0; i < 2**ADDR_WIDTH; i = i + 1)
+	//		ram[i] = 32'b0;
+	//end
+
+	initial begin
+		$readmemh("dmem.hex", ram);
+	end
+
+	generate
+		genvar idx;
+		for(idx = 0; idx < 128; idx = idx+1) begin: dmem_dump
+			wire [31:0] tmp;
+			assign tmp = ram[idx];
+		end
+	endgenerate
 	
 	always @ (posedge clk)
 	begin
 		// Write
-		if (mem_wmask[0] && we)
-			ram_0[data_addr] <= data_write[7:0];
-		if (mem_wmask[1] && we)
-			ram_1[data_addr] <= data_write[15:8];
-		if (mem_wmask[2] && we)
-			ram_2[data_addr] <= data_write[23:16];
-		if (mem_wmask[3] && we)
-			ram_3[data_addr] <= data_write[31:24];
+		if (we)
+			ram[data_addr] <= data_write;
 
 		data_addr_reg <= data_addr;
 	end
 	
-	assign data_read = {ram_3[data_addr_reg], ram_2[data_addr_reg], ram_1[data_addr_reg], ram_0[data_addr_reg]};
+	assign data_read = ram[data_addr_reg];
 
 endmodule
-
-
-//// Quartus Prime Verilog Template
-//// Single port RAM with single read/write address and initial contents 
-//// specified with an initial block
-//
-//module single_port_ram_with_init
-//#(parameter DATA_WIDTH=8, parameter ADDR_WIDTH=6)
-//(
-//	input [(DATA_WIDTH-1):0] data,
-//	input [(ADDR_WIDTH-1):0] addr,
-//	input we, clk,
-//	output [(DATA_WIDTH-1):0] q
-//);
-//
-//	// Declare the RAM variable
-//	reg [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
-//
-//	// Variable to hold the registered read address
-//	reg [ADDR_WIDTH-1:0] addr_reg;
-//
-//	// Specify the initial contents.  You can also use the $readmemb
-//	// system task to initialize the RAM variable from a text file.
-//	// See the $readmemb template page for details.
-//	initial 
-//	begin : INIT
-//		integer i;
-//		for(i = 0; i < 2**ADDR_WIDTH; i = i + 1)
-//			ram[i] = {DATA_WIDTH{1'b1}};
-//	end 
-//
-//	always @ (posedge clk)
-//	begin
-//		// Write
-//		if (we)
-//			ram[addr] <= data;
-//
-//		addr_reg <= addr;
-//	end
-//
-//	// Continuous assignment implies read returns NEW data.
-//	// This is the natural behavior of the TriMatrix memory
-//	// blocks in Single Port mode.  
-//	assign q = ram[addr_reg];
-//
-//endmodule

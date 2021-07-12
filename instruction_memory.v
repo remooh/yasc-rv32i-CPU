@@ -2,7 +2,7 @@
 // Single Port ROM
 
 module instruction_memory
-#(parameter ADDR_WIDTH=8)
+#(parameter ADDR_WIDTH=12)
 (
 	input [(ADDR_WIDTH-1):0] addr,
 	input clk, 
@@ -22,7 +22,7 @@ module instruction_memory
 
 	initial
 	begin
-		$readmemh("program.txt", rom);
+		$readmemh("bubblesort.hex", rom);
 	end
 
 	always @ (posedge clk)
