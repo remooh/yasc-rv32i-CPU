@@ -1,4 +1,4 @@
-`include "defines.v"
+`include "../rv32i_cpu/defines.v"
 
 module program_counter
 #(	parameter DATA_WIDTH = 32)

@@ -1,3 +1,14 @@
+`include "../rv32i_cpu/alu.v"
+`include "../rv32i_cpu/control_unit.v"
+`include "../rv32i_cpu/decode.v"
+`include "../rv32i_cpu/defines.v"
+`include "../rv32i_cpu/program_counter.v"
+`include "../rv32i_cpu/register_file.v"
+`include "../rv32i_cpu/rv32i_cpu.v"
+
+`include "../memory/data_memory.v"
+`include "../memory/instruction_memory.v"
+
 `timescale 1ns / 1ns
 
 module rv32i_cpu_tb();
@@ -38,7 +49,7 @@ module rv32i_cpu_tb();
 		.data_read(dmem_rdata)
 	);
 	
-	always #10 clk = ~clk;
+	always #5 clk = ~clk;
 	initial begin
 	
 		$dumpfile("rv32i_cpu_tb.vcd");
@@ -50,7 +61,7 @@ module rv32i_cpu_tb();
 		#20
 		reset = 0;
 		
-		#10000000
+		#2500000
 		reset = 1;
 		#20
 		

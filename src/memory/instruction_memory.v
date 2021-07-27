@@ -22,7 +22,7 @@ module instruction_memory
 
 	initial
 	begin
-		$readmemh("bubblesort.hex", rom);
+		$readmemh("../memory/program.hex", rom);
 	end
 
 	always @ (posedge clk)

@@ -22,7 +22,7 @@ module data_memory
 	//end
 
 	initial begin
-		$readmemh("dmem.hex", ram);
+		$readmemh("../memory/dmem.hex", ram);
 	end
 
 	generate

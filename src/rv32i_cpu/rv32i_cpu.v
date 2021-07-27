@@ -1,4 +1,4 @@
-`include "defines.v"
+`include "../rv32i_cpu/defines.v"
 
 `ifdef RISCV_FORMAL
 `define XLEN 32	// register file width
