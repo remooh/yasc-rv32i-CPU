@@ -1,0 +1,4 @@
+[submodule "riscv-formal"]
+	path = riscv-formal
+	url = https://github.com/Remooh/riscv-formal.git
+	branch = fix-some-syntax-errors
