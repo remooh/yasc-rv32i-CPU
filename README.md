@@ -41,7 +41,7 @@ Git submodule containing the [RISC-V Formal Verification Framework](https://gith
 Source for the project components
     * **[src/memory/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/memory) -**
     Sample implementation for the data memory and instruction memory
-    * **[src/riscv_formal/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/riscv_formal) -**
+    * **[src/rvfi/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rvfi) -**
     Integration of the CPU core with the [RISC-V Formal Verification Framework](https://github.com/Remooh/riscv-formal)
     * **[src/rv32i_cpu/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rv32i_cpu) -**
     CPU core implementation ([Brief Overview](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rv32i_cpu))
@@ -52,15 +52,15 @@ Source for the project components
 
 1. Clone this repo and initialize the submodules:
 ```bash
-git clone https://github.com/Remooh/yasc-rv32i-CPU.git
-git submodule init
+git clone --recursive https://github.com/Remooh/yasc-rv32i-CPU.git
+cd yasc-rv32i-CPU/
 ```
 2. Create the symlinks to add the CPU core and integration to the RISC-V Formal project. (as of now the framework doesn't support verifying cores outside the expected path).
 ```bash
-./riscv_formal_symlink.sh ./riscv-formal/
+./riscv_formal_symlink.sh riscv-formal/
 ```
 3. Install the prerequisites to run the [RISC-V Formal Verification Framework](https://github.com/Remooh/riscv-formal). The instructions can be seen [here](https://github.com/Remooh/riscv-formal/blob/master/docs/quickstart.md).
-4. Go to `./riscv-formal/cores/rv32i_cpu.` and run:
+4. Go to `riscv-formal/cores/rv32i_cpu/` and run:
 ```bash
 ./run_tests.sh
 ```
@@ -76,9 +76,9 @@ As of now the testbench instantiates the CPU core in `src/rv32i_cpu/` and the da
 To run the testbench check the following steps:
 
 1. Install [`Icarus Verilog`](http://iverilog.icarus.com/), [`GTKWave`](http://gtkwave.sourceforge.net/) and its dependencies.
-2. Go to `.src/testbench/` and run:
+2. Go to `src/testbench/` and run:
 ```bash
-./run_tests.sh
+./rv32i_cpu_tb.sh
 ```
 3. Type `finish` to exit the simulation prompt after it finishes.
 4. Analyse the simulation traces with [`GTKWave`](http://gtkwave.sourceforge.net/):
