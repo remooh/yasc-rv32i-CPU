@@ -1,7 +1,7 @@
 .globl __start
 
 __start:
-	li a0, 0		# a0 -> base addr
+	li a0, 0x1000		# a0 -> base addr
 	li a1, 128		# a1 -> num elements
 
 	addi s0, x0, 0		# big loop counter to 0
@@ -14,7 +14,7 @@ big_loop:
 small_loop:
 	addi t2, t2, 4		# next addr
 	addi s1, s1, 1		# increate small loop counter
-	
+
 	lw t0, -4(t2)
 	lw t1, 0(t2)
 	
@@ -27,6 +27,10 @@ skip:
 	blt s1, t3, small_loop	# branch if small loop counter < t3
 
 	blt s0, a1, big_loop	# branch if big loop counter < num elements
-	
+
+	#write to address 0xDEAD10CC to finish simulation
+	li x31, 0xDEAD10CC
+	sw x0, 0(x31)
+
 loop:
 	j loop

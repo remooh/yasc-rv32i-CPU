@@ -1,3 +1,4 @@
 *.vcd
+*.hex
 my_design
 checks

@@ -40,7 +40,7 @@ Git submodule containing the [RISC-V Formal Verification Framework](https://gith
 * **[src/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src) -**
 Source for the project components
     * **[src/memory/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/memory) -**
-    Sample implementation for the data memory and instruction memory
+    A memory implementation for the CPU in which the data and instructions are stored in the same address space but accessed individually ([Brief Overview](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/memory)).
     * **[src/rvfi/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rvfi) -**
     Integration of the CPU core with the [RISC-V Formal Verification Framework](https://github.com/Remooh/riscv-formal)
     * **[src/rv32i_cpu/](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rv32i_cpu) -**
@@ -64,7 +64,7 @@ cd yasc-rv32i-CPU/
 ```bash
 ./run_tests.sh
 ```
-5. Check the test results in `./riscv-formal/cores/rv32i_cpu/checks/`. In the case of a failed test [`GTKWave`](http://gtkwave.sourceforge.net/) can be used to display the counter example trace with:
+5. Check the test results in `./riscv-formal/cores/rv32i_cpu/checks/`. In the case of a failed test, [`GTKWave`](http://gtkwave.sourceforge.net/) can be used to display the counter example trace with:
 ```bash
 # $FAILED_TEST is the failed test directory name relative to the checks directory
 gtkwave checks/$FAILED_TEST/engine_0/trace.vcd
@@ -72,16 +72,19 @@ gtkwave checks/$FAILED_TEST/engine_0/trace.vcd
 
 ## Running the Testbench
 
-As of now the testbench instantiates the CPU core in `src/rv32i_cpu/` and the data and instruction memories in `src/memory/` to run a simple bubble sort program (the source for it is in `asm/bubblesort.s`). The instruction memory is initialized with the bubble sort program and the data memory is initialized with random values.
+As of now, the testbench instantiates the CPU core in [`src/rv32i_cpu/`](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/rv32i_cpu) and the dual port RAM that stores instructions and data in [`src/memory/`](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/memory) to run a simple bubble sort program (the source for it is in [`asm/bubblesort.s`](https://github.com/Remooh/yasc-rv32i-CPU/blob/master/asm/bubblesort.s)). The dual port RAM is initialized with the contents of [`src/memory/program.hex`](https://github.com/Remooh/yasc-rv32i-CPU/blob/master/src/memory/program.hex), which has the bubble sort program at the address `0x0` and the random values to be sorted at the address `0x1000`. At the end of the testbench execution, the contents of the memory are dumped in the file `memorydump.hex` and the simulation traces in `rv32i_cpu_tb.vcd`.
 To run the testbench check the following steps:
 
 1. Install [`Icarus Verilog`](http://iverilog.icarus.com/), [`GTKWave`](http://gtkwave.sourceforge.net/) and its dependencies.
-2. Go to `src/testbench/` and run:
+2. We need to prepare the memory, converting the contents of [`src/memory/program.hex`](https://github.com/Remooh/yasc-rv32i-CPU/blob/master/src/memory/program.hex) to the format required by the dual port ram, for this go to [`src/memory/`](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/memory) and run:
+```bash
+./split_hex.sh program.hex
+```
+2. To run the simulation, go to [`src/testbench/`](https://github.com/Remooh/yasc-rv32i-CPU/tree/master/src/testbench) and run:
 ```bash
 ./rv32i_cpu_tb.sh
 ```
-3. Type `finish` to exit the simulation prompt after it finishes.
-4. Analyse the simulation traces with [`GTKWave`](http://gtkwave.sourceforge.net/):
+4. After the simulation finishes, you can check the memory contents dumped in the file `memorydump.hex` (can be opened with a text editor) and analyze the simulation traces with [`GTKWave`](http://gtkwave.sourceforge.net/):
 ```bash
 gtkwave rv32i_cpu_tb.vcd
 ```

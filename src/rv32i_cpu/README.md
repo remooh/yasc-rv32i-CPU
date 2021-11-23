@@ -23,7 +23,7 @@ This file contains the definition of all the macros and signals used in the proj
 
 ## program_counter.v
 
-Module resposible for managing the program counter.
+Module responsible for managing the program counter.
 This module holds the program counter and manages it by calculating the address of the next instruction based on the control signals.
 
 ## register_file.v
